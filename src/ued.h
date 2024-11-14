@@ -28,10 +28,24 @@ void editorRowDelChar(erow* row, int at);
 void editorInsertChar(int c);
 void editorInsertNewline();
 void editorDelChar();
+void editorProcessKeypress(); 
 
 /*** file i/o ***/
 char* editorRowsToString(int* buflen);
 void editorOpen(char* filename);
 void editorSave();
+
+/*** buffer stuff ***/
+#define ABUF_INIT {NULL, 0}
+
+/*** append buffer ***/
+
+struct abuf {
+	char* b;
+	int len;
+};
+
+void abAppend(struct abuf* ab, const char* s, int len);
+void abFree(struct abuf* ab);
 
 #endif

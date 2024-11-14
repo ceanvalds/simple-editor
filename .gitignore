@@ -1,0 +1,6 @@
+*.swp
+*.o
+*.iso
+*.swo
+*.orig
+./ued
