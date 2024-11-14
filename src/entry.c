@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 		editorOpen(argv[1]);
 	}
 
-	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
+	editorSetStatusMessage("ued v%s. press ctrl + h for help", UED_VERSION);
 
 	while(1) {
 		editorRefreshScreen();

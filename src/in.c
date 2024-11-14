@@ -112,12 +112,16 @@ void editorProcessKeypress()
 		write(STDOUT_FILENO, "\x1b[2J", 4);
 		write(STDOUT_FILENO, "\x1b[H", 3);
 		exit(0);
-		break;
-
 	case CTRL_KEY('s'):
 		editorSave();
 		break;
-
+        case CTRL_KEY('h'):
+                editorSetStatusMessage("help: ctrl+s : save | ctrl+q : quit | ctrl + x : save and quit");
+                break;
+        case CTRL_KEY('x'):
+                editorSave();
+                system("clear");
+                exit(0);
 	case HOME_KEY:
 		E.cx = 0;
 		break;
@@ -129,7 +133,6 @@ void editorProcessKeypress()
 		break;
 
 	case BACKSPACE:
-	case CTRL_KEY('h'):
 	case DEL_KEY:
 		if(c == DEL_KEY) { editorMoveCursor(ARROW_RIGHT); }
 		editorDelChar();
