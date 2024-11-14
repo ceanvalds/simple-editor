@@ -91,85 +91,150 @@ void editorMoveCursor(int key)
 	}
 }
 
-void editorProcessKeypress()
-{
-	static int quit_times = UED_QUIT_TIMES;
 
-	int c = editorReadKey();
+void editorProcessKeypress() {
+    static int quit_times = UED_QUIT_TIMES;
+    static char command_buffer[100];
+    static int command_buffer_len = 0;
+    static int in_command_mode = 0;
 
-	switch(c) {
-	case '\r':
-		editorInsertNewline();
-		break;
+    int c = editorReadKey();
 
-	case CTRL_KEY('q'):
-		if(E.dirty && quit_times > 0) {
-			editorSetStatusMessage("WARNING!!! File has unsaved changes. "
-			                       "Press Ctrl-Q %d more times to quit.", quit_times);
-			quit_times--;
-			return;
-		}
-		write(STDOUT_FILENO, "\x1b[2J", 4);
-		write(STDOUT_FILENO, "\x1b[H", 3);
-		exit(0);
-	case CTRL_KEY('s'):
-		editorSave();
-		break;
-        case CTRL_KEY('h'):
-                editorSetStatusMessage("help: ctrl+s : save | ctrl+q : quit | ctrl + x : save and quit");
+    if (in_command_mode) {
+        switch (c) {
+            case '\r':
+                editorProcessCommand(command_buffer);
+                in_command_mode = 0;  
+                command_buffer_len = 0;  
+                memset(command_buffer, 0, sizeof(command_buffer));  
+                editorSetStatusMessage("ued v%s. press ctrl + h for help", UED_VERSION);
                 break;
+
+            case BACKSPACE:
+                if (command_buffer_len > 0) {
+                    command_buffer_len--;
+                    command_buffer[command_buffer_len] = '\0';  
+                    editorSetStatusMessage("command: %s", command_buffer);
+                }
+                break;
+
+            default:
+                if (command_buffer_len < sizeof(command_buffer) - 1) {  
+                    command_buffer[command_buffer_len++] = c;
+                    command_buffer[command_buffer_len] = '\0';  
+                    editorSetStatusMessage("command: %s", command_buffer);
+                }
+                break;
+        }
+        return;  
+    }
+
+    switch (c) {
+        case '\r':
+            editorInsertNewline();
+            break;
+
+        case CTRL_KEY('q'):
+            if (E.dirty && quit_times > 0) {
+                editorSetStatusMessage("no write since last change! "
+                                       "press ctrl+q %d more times to quit without saving", quit_times);
+                quit_times--;
+                return;
+            }
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
+            exit(0);
+
+        case CTRL_KEY('s'):
+            editorSave();
+            break;
+
+        case CTRL_KEY('h'):
+            editorSetStatusMessage("help: ctrl+s : save | ctrl+q : quit | ctrl+x : save and quit");
+            break;
+
         case CTRL_KEY('x'):
-                editorSave();
-                system("clear");
-                exit(0);
-	case HOME_KEY:
-		E.cx = 0;
-		break;
+            editorSave();
+            system("clear");
+            exit(0);
 
-	case END_KEY:
-		if(E.cy < E.numrows) {
-			E.cx = E.row[E.cy].size;
-		}
-		break;
+        case ':': 
+            in_command_mode = 1;
+            editorSetStatusMessage("command: ");
+            break;
 
-	case BACKSPACE:
-	case DEL_KEY:
-		if(c == DEL_KEY) { editorMoveCursor(ARROW_RIGHT); }
-		editorDelChar();
-		break;
+        case HOME_KEY:
+            E.cx = 0;
+            break;
 
-	case PAGE_UP:
-	case PAGE_DOWN: {
-		if(c == PAGE_UP) {
-			E.cy = E.rowoff;
-		} else if(c == PAGE_DOWN) {
-			E.cy = E.rowoff + E.screenrows - 1;
-			if(E.cy > E.numrows) { E.cy = E.numrows; }
-		}
+        case END_KEY:
+            if (E.cy < E.numrows) {
+                E.cx = E.row[E.cy].size;
+            }
+            break;
 
-		int times = E.screenrows;
-		while(times--) {
-			editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
-		}
-	}
-	break;
+        case BACKSPACE:
+        case DEL_KEY:
+            if (c == DEL_KEY) { editorMoveCursor(ARROW_RIGHT); }
+            editorDelChar();
+            break;
 
-	case ARROW_UP:
-	case ARROW_DOWN:
-	case ARROW_LEFT:
-	case ARROW_RIGHT:
-		editorMoveCursor(c);
-		break;
+        case PAGE_UP:
+        case PAGE_DOWN: {
+            if (c == PAGE_UP) {
+                E.cy = E.rowoff;
+            } else if (c == PAGE_DOWN) {
+                E.cy = E.rowoff + E.screenrows - 1;
+                if (E.cy > E.numrows) { E.cy = E.numrows; }
+            }
 
-	case CTRL_KEY('l'):
-	case '\x1b':
-		break;
+            int times = E.screenrows;
+            while (times--) {
+                editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            }
+        }
+        break;
 
-	default:
-		editorInsertChar(c);
-		break;
-	}
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_LEFT:
+        case ARROW_RIGHT:
+            editorMoveCursor(c);
+            break;
 
-	quit_times = UED_QUIT_TIMES;
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+
+        default:
+            editorInsertChar(c); 
+            break;
+    }
+
+    quit_times = UED_QUIT_TIMES; 
+}
+
+void editorProcessCommand(char *command) {
+    if (strcmp(command, "q") == 0) { 
+        if (E.dirty) {
+            editorSetStatusMessage("no write since last change! use :q! to override");
+        } else {
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
+            exit(0);
+        }
+    } else if (strcmp(command, "w") == 0) { 
+        editorSave();
+    } else if (strcmp(command, "q!") == 0) {
+        system("clear");
+        exit(0);
+    } else if (strcmp(command, "wq") == 0) { 
+        editorSave();
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+        exit(0);
+    } else {
+        editorSetStatusMessage("not an editor command: %s", command);
+    }
 }
 
