@@ -92,6 +92,31 @@ void editorMoveCursor(int key)
 }
 
 
+void editorProcessCommand(char *command) {
+    if (strcmp(command, "q") == 0) { 
+        if (E.dirty) {
+            editorSetStatusMessage("no write since last change! use :q! to override");
+        } else {
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
+            exit(0);
+        }
+    } else if (strcmp(command, "w") == 0) { 
+        editorSave();
+    } else if (strcmp(command, "q!") == 0) {
+        system("clear");
+        exit(0);
+    } else if (strcmp(command, "wq") == 0) { 
+        editorSave();
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+        exit(0);
+    } else {
+        editorSetStatusMessage("not an editor command: %s", command);
+    }
+}
+
+
 void editorProcessKeypress() {
     static int quit_times = UED_QUIT_TIMES;
     static char command_buffer[100];
@@ -212,29 +237,5 @@ void editorProcessKeypress() {
     }
 
     quit_times = UED_QUIT_TIMES; 
-}
-
-void editorProcessCommand(char *command) {
-    if (strcmp(command, "q") == 0) { 
-        if (E.dirty) {
-            editorSetStatusMessage("no write since last change! use :q! to override");
-        } else {
-            write(STDOUT_FILENO, "\x1b[2J", 4);
-            write(STDOUT_FILENO, "\x1b[H", 3);
-            exit(0);
-        }
-    } else if (strcmp(command, "w") == 0) { 
-        editorSave();
-    } else if (strcmp(command, "q!") == 0) {
-        system("clear");
-        exit(0);
-    } else if (strcmp(command, "wq") == 0) { 
-        editorSave();
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        write(STDOUT_FILENO, "\x1b[H", 3);
-        exit(0);
-    } else {
-        editorSetStatusMessage("not an editor command: %s", command);
-    }
 }
 
